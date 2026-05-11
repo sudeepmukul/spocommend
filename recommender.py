@@ -4,26 +4,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# =========================
-# LOAD DATA
-# =========================
+
 
 df = pd.read_csv('data/songs.csv')
 
-# Remove useless CSV index column
 if 'Unnamed: 0' in df.columns:
     df = df.drop(columns=['Unnamed: 0'])
 
-# Remove missing values
 df = df.dropna()
-
-# Reset dataframe index
 df = df.reset_index(drop=True)
-
-# =========================
-# AUDIO FEATURES
-# =========================
-
 features = [
     'danceability',
     'energy',
@@ -35,41 +24,28 @@ features = [
     'tempo'
 ]
 
-# Normalize features
 scaler = MinMaxScaler()
 
 scaled_features = scaler.fit_transform(df[features])
 
-# =========================
-# METADATA FEATURES
-# =========================
-
-# Combine useful text metadata
 df['metadata'] = (
     df['artists'].astype(str) + ' ' +
     df['track_genre'].astype(str) + ' ' +
     df['album_name'].astype(str)
 )
 
-# Convert text into vectors
 vectorizer = TfidfVectorizer(stop_words='english')
 
 metadata_matrix = vectorizer.fit_transform(df['metadata'])
 
-# =========================
-# RECOMMEND FUNCTION
-# =========================
-
 def recommend(song_name, artist_name=None, num_recommendations=5):
 
-    # Find matching songs
     matches = df[
         df['track_name'].str.lower().str.strip()
         ==
         song_name.lower().strip()
     ]
 
-    # Optional artist filtering
     if artist_name:
 
         matches = matches[
@@ -79,12 +55,10 @@ def recommend(song_name, artist_name=None, num_recommendations=5):
             )
         ]
 
-    # No song found
     if len(matches) == 0:
         print("Song not found!")
         return
 
-    # Select first matching song
     song_index = matches.index[0]
 
     selected_song = df.iloc[song_index]
@@ -95,9 +69,7 @@ def recommend(song_name, artist_name=None, num_recommendations=5):
         f"by {selected_song['artists']}"
     )
 
-    # =========================
-    # AUDIO SIMILARITY
-    # =========================
+
 
     song_vector = scaled_features[song_index].reshape(1, -1)
 
@@ -106,35 +78,28 @@ def recommend(song_name, artist_name=None, num_recommendations=5):
         scaled_features
     )[0]
 
-    # =========================
-    # METADATA SIMILARITY
-    # =========================
+    
 
     metadata_similarity = cosine_similarity(
         metadata_matrix[song_index],
         metadata_matrix
     )[0]
 
-    # =========================
-    # COMBINED SCORE
-    # =========================
+    
 
     final_similarity = (
         0.7 * audio_similarity +
         0.3 * metadata_similarity
     )
 
-    # Pair indices with scores
     sim_scores = list(enumerate(final_similarity))
 
-    # Sort descending
     sorted_songs = sorted(
         sim_scores,
         key=lambda x: x[1],
         reverse=True
     )
 
-    # Remove original song
     sorted_songs = [
         song for song in sorted_songs
         if song[0] != song_index
@@ -142,9 +107,7 @@ def recommend(song_name, artist_name=None, num_recommendations=5):
 
     print(f"\nBecause you liked '{song_name}':\n")
 
-    # =========================
-    # REMOVE DUPLICATES
-    # =========================
+    
 
     seen_tracks = set()
 
